@@ -3,660 +3,867 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- PWA / Home Screen App configuration -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="ボイス手帳">
-    <title>ボイス手帳 - 異年同日ダイアリー</title>
+    <title>異年同日 指導記録ノート</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <!-- FontAwesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', 'Noto Sans JP', sans-serif;
-            background-color: #f3f4f6;
+            background-color: #f8fafc; /* slate-50 */
+            color: #1e293b; /* slate-800 */
         }
-        
-        @keyframes pulse-ring {
-            0% {
-                transform: scale(0.8);
-                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
-            }
-            70% {
-                transform: scale(1);
-                box-shadow: 0 0 0 15px rgba(239, 68, 68, 0);
-            }
-            100% {
-                transform: scale(0.8);
-                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
-            }
+        /* Clean, minimal scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
         }
-        
-        .recording-active {
-            animation: pulse-ring 2s infinite;
-            background-color: #ef4444 !important;
-            color: white !important;
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9; /* slate-100 */
         }
-
-        .entry-card {
-            transition: all 0.2s ease-in-out;
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; /* slate-300 */
+            border-radius: 4px;
         }
-        .entry-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; /* slate-400 */
         }
-
-        /* Hide scrollbar for clean UI but keep functionality */
-        .hide-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .hide-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
+        .audio-wave-bar {
+            transition: height 0.08s ease;
         }
     </style>
 </head>
-<body class="text-gray-800 h-screen flex flex-col overflow-hidden">
+<body class="min-h-screen flex flex-col justify-between">
 
-    <!-- App Header -->
-    <header class="bg-indigo-600 text-white shadow-md z-10">
-        <div class="max-w-3xl mx-auto px-4 py-3 flex justify-between items-center">
-            <h1 class="text-xl font-bold tracking-wider flex items-center gap-2">
-                <i class="fa-solid fa-microphone-lines"></i>
-                ボイス手帳
-            </h1>
+    <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-slate-200 px-4 py-3 shadow-sm">
+        <div class="max-w-6xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-slate-800 text-white flex items-center justify-center font-bold text-xl shadow-sm">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight text-slate-900">異年同日 指導記録ノート</h1>
+                    <p class="text-xs text-slate-500 font-medium">過去の指導と現在を比較するボイスアーカイブ</p>
+                </div>
+            </div>
+
             <div class="flex items-center gap-2">
-                <button id="backup-btn" class="text-xs bg-indigo-500 hover:bg-indigo-400 px-2.5 py-1 rounded font-medium transition flex items-center gap-1" title="データを保存/復元">
-                    <i class="fa-solid fa-download"></i> バックアップ
-                </button>
-                <button id="lock-btn" class="text-xs bg-indigo-700 hover:bg-indigo-800 px-2.5 py-1 rounded font-medium transition flex items-center gap-1" title="手帳をロック">
-                    <i class="fa-solid fa-lock"></i> ロック
+                <button id="btn-today" class="px-3.5 py-1.5 text-xs font-semibold rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    今日に戻る
                 </button>
             </div>
         </div>
     </header>
 
-    <!-- Passcode Lock Modal -->
-    <div id="passcode-modal" class="fixed inset-0 bg-gray-900/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl p-6 max-w-xs w-full shadow-2xl text-center">
-            <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
-                <i class="fa-solid fa-lock"></i>
-            </div>
-            <h2 id="passcode-title" class="text-lg font-bold text-gray-800 mb-1">パスコードを入力</h2>
-            <p id="passcode-sub" class="text-xs text-gray-500 mb-4">4桁の暗証番号を入力してください</p>
-            
-            <input type="password" id="passcode-input" maxlength="4" pattern="[0-9]*" inputmode="numeric" class="w-32 text-center text-2xl tracking-widest py-2 border-2 border-indigo-200 rounded-lg focus:border-indigo-600 focus:outline-none mb-4 font-mono">
-            
-            <button id="passcode-submit" class="w-full bg-indigo-600 text-white py-2 rounded-lg font-medium hover:bg-indigo-700 transition">
-                解除
-            </button>
-        </div>
-    </div>
-
-    <!-- Backup / Import Modal -->
-    <div id="backup-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-            <h3 class="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2">
-                <i class="fa-solid fa-database text-indigo-600"></i>
-                データ管理
-            </h3>
-            <p class="text-xs text-gray-500 mb-4">手帳データはご使用の端末内にのみ安全に保存されています。</p>
-            
-            <div class="space-y-3">
-                <button id="export-json-btn" class="w-full bg-indigo-50 border border-indigo-200 text-indigo-700 py-2.5 rounded-xl font-medium hover:bg-indigo-100 transition flex items-center justify-center gap-2 text-sm">
-                    <i class="fa-solid fa-file-export"></i> データをファイルに書き出す
-                </button>
-                <div>
-                    <label class="w-full bg-gray-50 border border-gray-200 text-gray-700 py-2.5 rounded-xl font-medium hover:bg-gray-100 transition flex items-center justify-center gap-2 text-sm cursor-pointer">
-                        <i class="fa-solid fa-file-import"></i> データを読み込む
-                        <input type="file" id="import-json-file" accept=".json" class="hidden">
-                    </label>
-                </div>
-            </div>
-            
-            <button id="close-backup-modal" class="w-full mt-4 bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-300 transition">
-                閉じる
-            </button>
-        </div>
-    </div>
-
-    <!-- Main Content Area -->
-    <main class="flex-1 overflow-y-auto hide-scrollbar bg-gray-50 max-w-3xl w-full mx-auto shadow-xl relative" id="main-container">
+    <main class="max-w-6xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow">
         
-        <!-- Date Navigator -->
-        <div class="bg-white px-4 py-3 border-b sticky top-0 z-10 flex justify-between items-center shadow-sm">
-            <button id="prev-day-btn" class="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition">
-                <i class="fa-solid fa-chevron-left"></i>
-            </button>
-            <div class="text-center flex flex-col cursor-pointer" id="date-selector-container">
-                <span id="display-year" class="text-xs text-gray-500 font-medium"></span>
-                <span id="display-date" class="text-lg font-bold text-gray-800"></span>
-                <!-- Hidden native date picker to overlay for easy selection -->
-                <input type="date" id="date-picker" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
-            </div>
-            <button id="next-day-btn" class="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition">
-                <i class="fa-solid fa-chevron-right"></i>
-            </button>
-        </div>
-
-        <!-- Today's Entry / Input Section -->
-        <div class="p-4">
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
-                <div class="bg-indigo-50/50 px-4 py-3 border-b border-gray-100 flex justify-between items-center">
-                    <span class="text-sm font-semibold text-indigo-800" id="current-year-badge">この日の記録</span>
-                    <button id="reset-today-btn" class="text-xs text-indigo-600 hover:underline hidden">今日に戻る</button>
+        <!-- Left Panel: Calendar & Date Overview -->
+        <section class="lg:col-span-4 flex flex-col gap-4">
+            <!-- Calendar Card -->
+            <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                <!-- Month Navigator -->
+                <div class="flex items-center justify-between mb-4">
+                    <button id="cal-prev" class="p-1.5 hover:bg-slate-100 rounded-md text-slate-600 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    <h2 id="cal-month-year" class="text-base font-bold text-slate-800 tracking-wide">2026年 9月</h2>
+                    <button id="cal-next" class="p-1.5 hover:bg-slate-100 rounded-md text-slate-600 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </button>
                 </div>
-                
-                <div class="p-4">
-                    <div class="relative">
-                        <textarea id="diary-text" rows="4" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition resize-none text-gray-700 leading-relaxed" placeholder="マイクボタンを押して話すか、ここに入力してください..."></textarea>
-                        
-                        <!-- Status indicator for Speech API -->
-                        <div id="speech-status" class="absolute bottom-3 right-3 text-xs text-gray-400 hidden">
-                            <span class="animate-pulse">音声を認識中...</span>
-                        </div>
+
+                <!-- Calendar Grid Header -->
+                <div class="grid grid-cols-7 text-center text-xs font-semibold text-slate-500 mb-2">
+                    <span class="text-red-600/80">日</span>
+                    <span>月</span>
+                    <span>火</span>
+                    <span>水</span>
+                    <span>木</span>
+                    <span>金</span>
+                    <span class="text-blue-600/80">土</span>
+                </div>
+
+                <!-- Calendar Grid Body -->
+                <div id="calendar-days" class="grid grid-cols-7 gap-1 text-center min-h-[220px]">
+                    <!-- Dynamic rendering by JS -->
+                </div>
+
+                <!-- Legend -->
+                <div class="mt-5 pt-4 border-t border-slate-100 flex items-center justify-center gap-4 text-xs font-medium text-slate-500">
+                    <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-slate-400 inline-block"></span> 過去の記録</span>
+                    <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-blue-500 inline-block"></span> 今年の記録</span>
+                </div>
+            </div>
+
+            <!-- Stats Card -->
+            <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex items-center justify-between">
+                <span class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    総記録件数
+                </span>
+                <span class="text-lg font-bold text-slate-800"><span id="total-entries-count" class="text-xl">0</span> 件</span>
+            </div>
+        </section>
+
+        <!-- Right Panel: On-This-Day Timeline & Recorder -->
+        <section class="lg:col-span-8 flex flex-col gap-4">
+            <!-- On-This-Day Header -->
+            <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex items-center justify-between gap-4">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold tracking-wider uppercase border border-slate-200">Archive</span>
+                        <span id="selected-date-badge" class="text-xs text-slate-500 font-semibold">9月22日</span>
+                    </div>
+                    <h2 id="selected-date-title" class="text-xl font-bold text-slate-800">9月22日の指導記録</h2>
+                </div>
+                <button id="btn-open-recorder" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 active:scale-95 text-white rounded-lg font-semibold shadow transition flex items-center gap-2 text-sm shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    新規記録を追加
+                </button>
+            </div>
+
+            <!-- Voice Recorder Section (Collapsible) -->
+            <div id="recorder-card" class="hidden bg-white border border-blue-200 rounded-xl p-5 shadow-md transition-all relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <h3 class="font-bold text-slate-800 text-base" id="recorder-title">新規記録</h3>
+                    </div>
+                    <button id="btn-close-recorder" class="text-slate-400 hover:bg-slate-100 hover:text-slate-600 p-1.5 rounded-md transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+
+                <!-- Live Visualizer & Timer -->
+                <div class="bg-slate-900 rounded-lg p-5 flex flex-col items-center justify-center gap-3 mb-5 border border-slate-800">
+                    <div id="timer-display" class="font-mono text-3xl font-medium text-slate-100 tracking-wider">00:00</div>
+                    
+                    <!-- Audio Waveform Canvas -->
+                    <canvas id="visualizer" class="w-full h-12 rounded bg-slate-800/50"></canvas>
+
+                    <!-- Control Controls -->
+                    <div class="flex items-center gap-4 mt-2">
+                        <button id="btn-record-toggle" class="w-12 h-12 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center shadow-lg transition active:scale-90 focus:outline-none focus:ring-4 focus:ring-red-900">
+                            <svg id="icon-mic" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                            <svg id="icon-stop" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>
+                        </button>
+                    </div>
+                    <p id="recording-status" class="text-xs text-slate-400 mt-1">マイクボタンを押して録音を開始（音声自動文字起こし対応）</p>
+                </div>
+
+                <!-- Text Form -->
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">
+                            概要・タイトル
+                        </label>
+                        <input id="diary-title-input" type="text" class="w-full p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition text-slate-800 placeholder-slate-400" placeholder="例: vs〇〇高校（練習試合）、シート打撃・走塁強化">
                     </div>
 
-                    <div class="flex justify-between items-center mt-4">
-                        <div class="flex items-center gap-2">
-                            <!-- Mic Button -->
-                            <button id="mic-btn" class="w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 flex justify-center items-center hover:bg-indigo-200 transition shadow-sm" title="音声入力">
-                                <i class="fa-solid fa-microphone text-xl"></i>
-                            </button>
-                            <span id="mic-hint" class="text-xs text-gray-500">音声で入力</span>
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                                指導メモ・詳細
+                            </label>
+                            <span id="speech-status-tag" class="text-[10px] text-blue-700 font-bold bg-blue-100 px-2 py-0.5 rounded hidden animate-pulse">
+                                音声認識中...
+                            </span>
                         </div>
-                        
-                        <button id="save-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-6 rounded-lg shadow transition flex items-center gap-2">
-                            <i class="fa-solid fa-check"></i>
-                            保存
+                        <textarea id="diary-text-input" rows="4" class="w-full p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition text-slate-800 placeholder-slate-400 leading-relaxed" placeholder="話した内容が自動で文字起こしされます。キーボードでの直接入力・編集も可能です。"></textarea>
+                    </div>
+                    
+                    <div class="flex justify-end pt-2">
+                        <button id="btn-save-entry" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-lg shadow-sm transition flex items-center gap-2 active:scale-95">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            記録を保存する
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Same-Day Past Years List (異年同日) -->
-            <div id="past-entries-section">
-                <div class="flex items-center gap-2 mb-4 px-2">
-                    <i class="fa-solid fa-clock-rotate-left text-gray-400"></i>
-                    <h2 class="text-sm font-bold text-gray-600">過去の同じ日 (異年同日)</h2>
-                </div>
-                
-                <div id="entries-list" class="space-y-4">
-                    <!-- Past entries will be injected here via JS -->
-                    <div class="text-center py-8 text-gray-400 text-sm" id="empty-state">
-                        <i class="fa-regular fa-folder-open text-3xl mb-2 opacity-50 block"></i>
-                        過去の同じ日の記録はありません。
-                    </div>
-                </div>
+            <!-- On-This-Day Entries List (Years Comparison) -->
+            <div id="timeline-container" class="space-y-4">
+                <!-- Dynamic rendering by JS -->
             </div>
-        </div>
+        </section>
     </main>
 
-    <!-- Notification Toast -->
-    <div id="toast" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium transition-opacity duration-300 opacity-0 pointer-events-none z-50">
-        Message
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-sm opacity-0 transition-opacity duration-200">
+        <div class="bg-white rounded-xl p-6 max-w-sm w-full mx-4 shadow-xl transform scale-95 transition-transform duration-200 border border-slate-200" id="delete-modal-content">
+            <h3 class="text-lg font-bold text-slate-800 mb-2">記録を削除しますか？</h3>
+            <p class="text-sm text-slate-600 mb-6">この操作は取り消すことができません。</p>
+            <div class="flex items-center justify-end gap-3">
+                <button id="btn-cancel-delete" class="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition active:scale-95">キャンセル</button>
+                <button id="btn-confirm-delete" class="px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm transition active:scale-95">削除する</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 right-6 bg-slate-800 text-white px-4 py-3 rounded-lg shadow-lg z-50 transition-all transform translate-y-20 opacity-0 flex items-center gap-3 text-sm font-medium border border-slate-700">
+        <span id="toast-message">メッセージ</span>
     </div>
 
     <script>
-        // Application State
-        let currentDate = new Date();
-        let diaries = JSON.parse(localStorage.getItem('voiceDiaryApp_data')) || [];
-        let savedPIN = localStorage.getItem('voiceDiaryApp_pin') || null;
-        
-        // Passcode Lock Logic
-        const passcodeModal = document.getElementById('passcode-modal');
-        const passcodeTitle = document.getElementById('passcode-title');
-        const passcodeSub = document.getElementById('passcode-sub');
-        const passcodeInput = document.getElementById('passcode-input');
-        const passcodeSubmit = document.getElementById('passcode-submit');
-        const lockBtn = document.getElementById('lock-btn');
+        /**
+         * State & Storage Management
+         */
+        const STORAGE_KEY = 'voice_diary_entries_v3'; // Changed key for schema update
 
-        function initSecurity() {
-            if (!savedPIN) {
-                passcodeTitle.textContent = "初期パスコード設定";
-                passcodeSub.textContent = "保護用の4桁の番号を決めて入力してください";
-                passcodeSubmit.textContent = "設定して開始";
-            } else {
-                passcodeTitle.textContent = "パスコードを入力";
-                passcodeSub.textContent = "4桁の暗証番号を入力してください";
-                passcodeSubmit.textContent = "解除";
+        // 状態管理用オブジェクト
+        const state = {
+            entries: [],
+            currentDate: new Date(),
+            audioContext: null,
+            analyser: null,
+            mediaRecorder: null,
+            audioChunks: [],
+            recordedAudioBlob: null,
+            recordedAudioUrl: null,
+            recording: false,
+            recordingSeconds: 0,
+            timerInterval: null,
+            visualizerAnimationFrame: null,
+            speechRecognition: null,
+            isSpeechSupported: false,
+            entryToDeleteId: null
+        };
+
+        // DOM Element Cache
+        const elements = {
+            calMonthYear: document.getElementById('cal-month-year'),
+            calDays: document.getElementById('calendar-days'),
+            calPrev: document.getElementById('cal-prev'),
+            calNext: document.getElementById('cal-next'),
+            btnToday: document.getElementById('btn-today'),
+            selectedDateBadge: document.getElementById('selected-date-badge'),
+            selectedDateTitle: document.getElementById('selected-date-title'),
+            timelineContainer: document.getElementById('timeline-container'),
+            btnOpenRecorder: document.getElementById('btn-open-recorder'),
+            recorderCard: document.getElementById('recorder-card'),
+            btnCloseRecorder: document.getElementById('btn-close-recorder'),
+            recorderTitle: document.getElementById('recorder-title'),
+            timerDisplay: document.getElementById('timer-display'),
+            visualizer: document.getElementById('visualizer'),
+            btnRecordToggle: document.getElementById('btn-record-toggle'),
+            iconMic: document.getElementById('icon-mic'),
+            iconStop: document.getElementById('icon-stop'),
+            recordingStatus: document.getElementById('recording-status'),
+            diaryTitleInput: document.getElementById('diary-title-input'),
+            diaryTextInput: document.getElementById('diary-text-input'),
+            speechStatusTag: document.getElementById('speech-status-tag'),
+            btnSaveEntry: document.getElementById('btn-save-entry'),
+            totalEntriesCount: document.getElementById('total-entries-count'),
+            toast: document.getElementById('toast'),
+            toastMessage: document.getElementById('toast-message'),
+            deleteModal: document.getElementById('delete-modal'),
+            deleteModalContent: document.getElementById('delete-modal-content'),
+            btnCancelDelete: document.getElementById('btn-cancel-delete'),
+            btnConfirmDelete: document.getElementById('btn-confirm-delete')
+        };
+
+        // Initialize App
+        window.onload = function () {
+            loadEntries();
+            if (state.entries.length === 0) {
+                initSampleData();
             }
-            passcodeModal.classList.remove('hidden');
-            passcodeInput.value = '';
-            passcodeInput.focus();
+            initSpeechRecognition();
+            renderCalendar();
+            renderTimeline();
+            setupEventListeners();
+            updateStats();
+        };
+
+        function initSampleData() {
+            // Generate entries for past years on today's date with baseball coaching samples
+            const today = new Date();
+            const currentYear = today.getFullYear();
+            const month = today.getMonth();
+            const day = today.getDate();
+
+            const samples = [
+                {
+                    id: 'sample-1',
+                    year: currentYear - 1,
+                    month: month,
+                    day: day,
+                    timestamp: new Date(currentYear - 1, month, day, 19, 30).getTime(),
+                    title: 'vs〇〇高校（秋季練習試合）',
+                    text: '相手の左投手に苦戦。コンパクトなスイングと逆方向への意識を再徹底。バント処理のミスが2つあったので明日の朝練で復習する。',
+                    audioUrl: null,
+                    duration: 14
+                },
+                {
+                    id: 'sample-2',
+                    year: currentYear - 2,
+                    month: month,
+                    day: day,
+                    timestamp: new Date(currentYear - 2, month, day, 21, 15).getTime(),
+                    title: 'シート打撃・走塁確認',
+                    text: '2死からの走塁スタートがかなり良くなってきた。主戦投手の球数管理と変化球の精度チェックも順調。選手の顔つきが変わってきた。',
+                    audioUrl: null,
+                    duration: 18
+                }
+            ];
+
+            state.entries = samples;
+            saveEntries();
         }
 
-        passcodeSubmit.addEventListener('click', verifyPasscode);
-        passcodeInput.addEventListener('keyup', (e) => {
-            if (e.key === 'Enter') verifyPasscode();
-        });
-
-        function verifyPasscode() {
-            const val = passcodeInput.value.trim();
-            if (val.length !== 4 || isNaN(val)) {
-                showToast('4桁の数字を入力してください');
-                return;
-            }
-
-            if (!savedPIN) {
-                savedPIN = val;
-                localStorage.setItem('voiceDiaryApp_pin', savedPIN);
-                showToast('パスコードを設定しました');
-                passcodeModal.classList.add('hidden');
-            } else if (val === savedPIN) {
-                passcodeModal.classList.add('hidden');
-                showToast('ロックを解除しました');
-            } else {
-                showToast('パスコードが違います');
-                passcodeInput.value = '';
-            }
-        }
-
-        lockBtn.addEventListener('click', () => {
-            initSecurity();
-        });
-
-        // Backup / Restore Logic
-        const backupBtn = document.getElementById('backup-btn');
-        const backupModal = document.getElementById('backup-modal');
-        const closeBackupModal = document.getElementById('close-backup-modal');
-        const exportJsonBtn = document.getElementById('export-json-btn');
-        const importJsonFile = document.getElementById('import-json-file');
-
-        backupBtn.addEventListener('click', () => backupModal.classList.remove('hidden'));
-        closeBackupModal.addEventListener('click', () => backupModal.classList.add('hidden'));
-
-        exportJsonBtn.addEventListener('click', () => {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(diaries, null, 2));
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", `voice_diary_backup_${formatDateString(new Date())}.json`);
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
-            showToast('バックアップを出力しました');
-        });
-
-        importJsonFile.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(evt) {
+        function loadEntries() {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
                 try {
-                    const imported = JSON.parse(evt.target.result);
-                    if (Array.isArray(imported)) {
-                        diaries = imported;
-                        localStorage.setItem('voiceDiaryApp_data', JSON.stringify(diaries));
-                        showToast('データを復元しました');
-                        loadDataForDate();
-                        backupModal.classList.add('hidden');
-                    } else {
-                        showToast('無効なデータ形式です');
-                    }
-                } catch(err) {
-                    showToast('ファイルの読み込みに失敗しました');
+                    state.entries = JSON.parse(raw);
+                } catch (e) {
+                    console.error('Failed to parse entries', e);
+                    state.entries = [];
                 }
-            };
-            reader.readAsText(file);
-        });
-
-        // DOM Elements
-        const displayYear = document.getElementById('display-year');
-        const displayDate = document.getElementById('display-date');
-        const datePicker = document.getElementById('date-picker');
-        const prevDayBtn = document.getElementById('prev-day-btn');
-        const nextDayBtn = document.getElementById('next-day-btn');
-        const resetTodayBtn = document.getElementById('reset-today-btn');
-        
-        const diaryText = document.getElementById('diary-text');
-        const micBtn = document.getElementById('mic-btn');
-        const micHint = document.getElementById('mic-hint');
-        const saveBtn = document.getElementById('save-btn');
-        const speechStatus = document.getElementById('speech-status');
-        const currentYearBadge = document.getElementById('current-year-badge');
-        
-        const entriesList = document.getElementById('entries-list');
-        const emptyState = document.getElementById('empty-state');
-        const toast = document.getElementById('toast');
-
-        // Speech Recognition Setup (Web Speech API)
-        let recognition = null;
-        let isRecording = false;
-
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            recognition = new SpeechRecognition();
-            recognition.lang = 'ja-JP';
-            recognition.continuous = true; // Keep recording until stopped
-            recognition.interimResults = true; // Show results while speaking
-
-            recognition.onstart = function() {
-                isRecording = true;
-                micBtn.classList.add('recording-active');
-                micBtn.innerHTML = '<i class="fa-solid fa-stop text-xl"></i>';
-                micHint.textContent = '録音中...';
-                micHint.classList.add('text-red-500');
-                speechStatus.classList.remove('hidden');
-                
-                // Add space if there's already text
-                if (diaryText.value.length > 0 && !diaryText.value.endsWith('\n') && !diaryText.value.endsWith(' ')) {
-                    diaryText.value += '\n';
-                }
-            };
-
-            let finalTranscript = '';
-
-            recognition.onresult = function(event) {
-                let interimTranscript = '';
-                
-                // Re-calculate final text up to this point from previous sessions is already in textarea.
-                // We only append new results.
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        // Append final results to the textarea directly
-                        const text = event.results[i][0].transcript;
-                        diaryText.value += text + '。'; // Add period for Japanese
-                    } else {
-                        interimTranscript += event.results[i][0].transcript;
-                    }
-                }
-                
-                // Scroll to bottom as text is added
-                diaryText.scrollTop = diaryText.scrollHeight;
-            };
-
-            recognition.onerror = function(event) {
-                console.error("Speech recognition error", event.error);
-                stopRecording();
-                if(event.error !== 'no-speech') {
-                    showToast('音声認識エラー: ' + event.error);
-                }
-            };
-
-            recognition.onend = function() {
-                if (isRecording) {
-                    // Automatically restart if continuous gets dropped, unless manually stopped
-                    recognition.start();
-                } else {
-                    stopRecordingUI();
-                }
-            };
-        } else {
-            // Speech API not supported
-            micBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            micBtn.title = 'お使いのブラウザは音声入力に対応していません';
-            micHint.textContent = '音声入力非対応';
+            }
         }
 
-        function toggleRecording() {
-            if (!recognition) {
-                showToast('お使いのブラウザは音声入力に対応していません。(Chrome/Safari推奨)');
+        function saveEntries() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state.entries));
+            updateStats();
+        }
+
+        function updateStats() {
+            elements.totalEntriesCount.textContent = state.entries.length;
+        }
+
+        function renderCalendar() {
+            const date = state.currentDate;
+            const year = date.getFullYear();
+            const month = date.getMonth();
+
+            elements.calMonthYear.textContent = `${year}年 ${month + 1}月`;
+            elements.calDays.innerHTML = '';
+
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            const totalDays = new Date(year, month + 1, 0).getDate();
+
+            // Empty cells for alignment
+            for (let i = 0; i < firstDayIndex; i++) {
+                const emptyCell = document.createElement('div');
+                elements.calDays.appendChild(emptyCell);
+            }
+
+            const currentYear = new Date().getFullYear();
+
+            // Render day numbers
+            for (let day = 1; day <= totalDays; day++) {
+                const dayBtn = document.createElement('button');
+                dayBtn.className = 'p-2 text-sm rounded-lg transition flex flex-col items-center justify-center relative hover:bg-slate-100 focus:outline-none';
+
+                const isSelected = day === date.getDate() && month === date.getMonth();
+                
+                // Check if entries exist for this (month, day) across ALL years
+                const entriesForDay = state.entries.filter(e => e.month === month && e.day === day);
+                const hasCurrentYear = entriesForDay.some(e => e.year === currentYear);
+                const hasPastYears = entriesForDay.some(e => e.year < currentYear);
+
+                if (isSelected) {
+                    dayBtn.classList.add('bg-slate-800', 'font-bold', 'text-white', 'shadow-md');
+                } else {
+                    dayBtn.classList.add('text-slate-700', 'font-medium');
+                }
+
+                dayBtn.innerHTML = `<span>${day}</span>`;
+
+                // Status Indicator Dots
+                if (entriesForDay.length > 0) {
+                    const dotsContainer = document.createElement('div');
+                    dotsContainer.className = 'flex items-center gap-1 mt-1';
+
+                    if (hasPastYears) {
+                        const dot = document.createElement('span');
+                        dot.className = `w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-slate-300' : 'bg-slate-400'}`;
+                        dotsContainer.appendChild(dot);
+                    }
+                    if (hasCurrentYear) {
+                        const dot = document.createElement('span');
+                        dot.className = `w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-blue-300' : 'bg-blue-500'}`;
+                        dotsContainer.appendChild(dot);
+                    }
+                    dayBtn.appendChild(dotsContainer);
+                }
+
+                dayBtn.addEventListener('click', () => {
+                    state.currentDate = new Date(year, month, day);
+                    renderCalendar();
+                    renderTimeline();
+                });
+
+                elements.calDays.appendChild(dayBtn);
+            }
+        }
+
+        function renderTimeline() {
+            const month = state.currentDate.getMonth();
+            const day = state.currentDate.getDate();
+            const dateStr = `${month + 1}月${day}日`;
+            const currentYear = new Date().getFullYear();
+
+            elements.selectedDateBadge.textContent = dateStr;
+            elements.selectedDateTitle.textContent = `${dateStr}の指導記録`;
+            elements.recorderTitle.textContent = `新規記録 (${currentYear}年${dateStr})`;
+
+            // Get all entries matching this month and day, sorted descending by year
+            const filteredEntries = state.entries
+                .filter(e => e.month === month && e.day === day)
+                .sort((a, b) => b.year - a.year);
+
+            elements.timelineContainer.innerHTML = '';
+
+            if (filteredEntries.length === 0) {
+                elements.timelineContainer.innerHTML = `
+                    <div class="bg-white border border-dashed border-slate-300 rounded-xl p-8 text-center text-slate-500">
+                        <svg class="w-8 h-8 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <p class="font-semibold text-sm">この日の記録はまだありません。</p>
+                        <p class="text-xs mt-1">「新規記録を追加」から残してみましょう。</p>
+                    </div>
+                `;
                 return;
             }
 
-            if (isRecording) {
-                stopRecording();
-            } else {
-                startRecording();
-            }
+            filteredEntries.forEach(entry => {
+                const yearsAgo = currentYear - entry.year;
+                const yearsLabel = yearsAgo === 0 ? '今年' : `${yearsAgo}年前`;
+                const isCurrentYear = entry.year === currentYear;
+
+                const card = document.createElement('div');
+                card.className = `bg-white border ${isCurrentYear ? 'border-blue-200 ring-1 ring-blue-50' : 'border-slate-200'} rounded-xl p-5 shadow-sm transition hover:shadow-md relative overflow-hidden`;
+
+                card.innerHTML = `
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="flex flex-col gap-1">
+                            <span class="inline-block px-2.5 py-1 rounded-md ${isCurrentYear ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-slate-100 text-slate-600 border border-slate-200'} text-[11px] font-bold tracking-wider w-max">
+                                ${entry.year}年 (${yearsLabel})
+                            </span>
+                            ${entry.title ? `<h4 class="text-base font-bold text-slate-800 mt-1">${escapeHtml(entry.title)}</h4>` : ''}
+                        </div>
+                        <button class="btn-delete-entry text-xs text-slate-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded transition" data-id="${entry.id}" title="削除">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    </div>
+
+                    ${entry.audioUrl ? `
+                    <!-- Audio Player Widget -->
+                    <div class="bg-slate-50 rounded-lg p-2.5 mb-3 border border-slate-200 flex items-center gap-3">
+                        <button class="btn-play-audio p-2 bg-slate-700 text-white rounded-md hover:bg-slate-800 transition active:scale-95 shadow-sm focus:outline-none" data-id="${entry.id}">
+                            <svg class="w-4 h-4 icon-play" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                            <svg class="w-4 h-4 icon-pause hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                        </button>
+                        <div class="flex-grow">
+                            <div class="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                <div class="audio-progress-${entry.id} w-0 h-full bg-slate-600 transition-all duration-100"></div>
+                            </div>
+                        </div>
+                        <span class="text-[11px] font-mono font-medium text-slate-500">${entry.duration ? entry.duration + 's' : 'VOICE'}</span>
+                    </div>
+                    ` : ''}
+
+                    <p class="text-sm leading-relaxed text-slate-700 whitespace-pre-wrap">${escapeHtml(entry.text)}</p>
+                `;
+
+                // Delete Handler
+                const deleteBtn = card.querySelector('.btn-delete-entry');
+                deleteBtn.addEventListener('click', () => {
+                    showDeleteModal(entry.id);
+                });
+
+                // Audio Playback Handler
+                const playBtn = card.querySelector('.btn-play-audio');
+                if (playBtn) {
+                    playBtn.addEventListener('click', () => {
+                        playAudioNote(entry, playBtn, card.querySelector(`.audio-progress-${entry.id}`));
+                    });
+                }
+
+                elements.timelineContainer.appendChild(card);
+            });
         }
 
-        function startRecording() {
+        async function startRecording() {
             try {
-                recognition.start();
-            } catch (e) {
-                console.error("Could not start recording", e);
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                // Web Audio Context & Analyser for Waveform
+                state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = state.audioContext.createMediaStreamSource(stream);
+                state.analyser = state.audioContext.createAnalyser();
+                state.analyser.fftSize = 64;
+                source.connect(state.analyser);
+
+                state.mediaRecorder = new MediaRecorder(stream);
+                state.audioChunks = [];
+
+                state.mediaRecorder.ondataavailable = e => {
+                    if (e.data.size > 0) {
+                        state.audioChunks.push(e.data);
+                    }
+                };
+
+                state.mediaRecorder.onstop = () => {
+                    state.recordedAudioBlob = new Blob(state.audioChunks, { type: 'audio/webm' });
+                    
+                    // Convert Blob to Data URL for LocalStorage persistence
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        state.recordedAudioUrl = reader.result;
+                    };
+                    reader.readAsDataURL(state.recordedAudioBlob);
+
+                    // Stop mic tracks
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                state.mediaRecorder.start();
+                state.recording = true;
+                state.recordingSeconds = 0;
+
+                // Start Web Speech Recognition if available
+                if (state.speechRecognition) {
+                    try {
+                        state.speechRecognition.start();
+                        elements.speechStatusTag.classList.remove('hidden');
+                    } catch (e) {
+                        console.log('Speech recognition already active or error', e);
+                    }
+                }
+
+                // UI updates
+                elements.iconMic.classList.add('hidden');
+                elements.iconStop.classList.remove('hidden');
+                elements.recordingStatus.textContent = '録音中... 詳細をお話しください';
+                elements.btnRecordToggle.classList.replace('bg-red-600', 'bg-red-700');
+                elements.btnRecordToggle.classList.add('animate-pulse');
+
+                // Timer
+                state.timerInterval = setInterval(() => {
+                    state.recordingSeconds++;
+                    const mins = String(Math.floor(state.recordingSeconds / 60)).padStart(2, '0');
+                    const secs = String(state.recordingSeconds % 60).padStart(2, '0');
+                    elements.timerDisplay.textContent = `${mins}:${secs}`;
+                }, 1000);
+
+                // Start Visualizer
+                drawVisualizer();
+
+            } catch (err) {
+                console.error('Microphone access denied:', err);
+                showToast('マイクへのアクセスが許可されませんでした。');
             }
         }
 
         function stopRecording() {
-            isRecording = false;
-            try {
-                recognition.stop();
-            } catch(e) {}
-            stopRecordingUI();
-        }
+            if (state.mediaRecorder && state.recording) {
+                state.mediaRecorder.stop();
+                state.recording = false;
+                clearInterval(state.timerInterval);
+                cancelAnimationFrame(state.visualizerAnimationFrame);
 
-        function stopRecordingUI() {
-            micBtn.classList.remove('recording-active');
-            micBtn.innerHTML = '<i class="fa-solid fa-microphone text-xl"></i>';
-            micHint.textContent = '音声で入力';
-            micHint.classList.remove('text-red-500');
-            speechStatus.classList.add('hidden');
-        }
+                if (state.speechRecognition) {
+                    try {
+                        state.speechRecognition.stop();
+                    } catch (e) {}
+                    elements.speechStatusTag.classList.add('hidden');
+                }
 
-        // --- Date Management ---
-        function formatDateString(date) {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        }
-
-        const days = ['日', '月', '火', '水', '木', '金', '土'];
-        
-        function updateDateDisplay() {
-            const year = currentDate.getFullYear();
-            const month = currentDate.getMonth() + 1;
-            const date = currentDate.getDate();
-            const dayStr = days[currentDate.getDay()];
-
-            displayYear.textContent = `${year}年`;
-            displayDate.textContent = `${month}月${date}日 (${dayStr})`;
-            
-            // Sync hidden date picker
-            datePicker.value = formatDateString(currentDate);
-
-            // Check if current date is today
-            const today = new Date();
-            if (year === today.getFullYear() && month === today.getMonth() + 1 && date === today.getDate()) {
-                resetTodayBtn.classList.add('hidden');
-            } else {
-                resetTodayBtn.classList.remove('hidden');
+                elements.iconMic.classList.remove('hidden');
+                elements.iconStop.classList.add('hidden');
+                elements.recordingStatus.textContent = '録音完了。保存ボタンを押して記録を確定してください。';
+                elements.btnRecordToggle.classList.replace('bg-red-700', 'bg-red-600');
+                elements.btnRecordToggle.classList.remove('animate-pulse');
+                
+                // Clear visualizer
+                const canvas = elements.visualizer;
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
             }
-            
-            currentYearBadge.textContent = `${year}年の記録`;
-
-            // Load data for the selected date
-            loadDataForDate();
         }
 
-        function loadDataForDate() {
-            const targetMonth = currentDate.getMonth();
-            const targetDate = currentDate.getDate();
-            const targetYear = currentDate.getFullYear();
+        function drawVisualizer() {
+            const canvas = elements.visualizer;
+            const ctx = canvas.getContext('2d');
             
-            const dateString = formatDateString(currentDate);
+            // Adjust canvas internal resolution
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
 
-            // Find entry for currently selected YEAR
-            const currentYearEntry = diaries.find(d => d.date === dateString);
-            
-            if (currentYearEntry) {
-                diaryText.value = currentYearEntry.text;
-                saveBtn.innerHTML = '<i class="fa-solid fa-check"></i> 更新';
-            } else {
-                diaryText.value = '';
-                saveBtn.innerHTML = '<i class="fa-solid fa-check"></i> 保存';
+            const bufferLength = state.analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            function renderFrame() {
+                if (!state.recording) return;
+                state.visualizerAnimationFrame = requestAnimationFrame(renderFrame);
+
+                state.analyser.getByteFrequencyData(dataArray);
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                const barWidth = (canvas.width / bufferLength) * 2.5;
+                let barHeight;
+                let x = 0;
+
+                for (let i = 0; i < bufferLength; i++) {
+                    barHeight = (dataArray[i] / 255) * canvas.height;
+
+                    ctx.fillStyle = '#60a5fa'; // blue-400
+                    ctx.fillRect(x, canvas.height - barHeight, barWidth - 1, barHeight);
+
+                    x += barWidth + 1;
+                }
             }
 
-            // Find entries for SAME MONTH/DAY but DIFFERENT YEARS (異年同日)
-            const pastEntries = diaries.filter(d => {
-                const dObj = new Date(d.date);
-                // Same month and day, but year is LESS than currently selected year
-                return dObj.getMonth() === targetMonth && 
-                       dObj.getDate() === targetDate && 
-                       dObj.getFullYear() < targetYear;
-            }).sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort descending by year (newest first)
-
-            renderPastEntries(pastEntries);
+            renderFrame();
         }
 
-        function saveEntry() {
-            const text = diaryText.value.trim();
-            const dateString = formatDateString(currentDate);
+        function initSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SpeechRecognition) {
+                state.isSpeechSupported = true;
+                state.speechRecognition = new SpeechRecognition();
+                state.speechRecognition.continuous = true;
+                state.speechRecognition.interimResults = true;
+                state.speechRecognition.lang = 'ja-JP';
 
-            if (!text) {
-                showToast('テキストを入力してください');
+                let finalTranscript = '';
+
+                state.speechRecognition.onresult = (event) => {
+                    let interimTranscript = '';
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        if (event.results[i].isFinal) {
+                            finalTranscript += event.results[i][0].transcript;
+                        } else {
+                            interimTranscript += event.results[i][0].transcript;
+                        }
+                    }
+                    const currentText = finalTranscript || interimTranscript;
+                    if (currentText) {
+                        elements.diaryTextInput.value = currentText;
+                    }
+                };
+
+                state.speechRecognition.onerror = (event) => {
+                    console.log('Speech recognition error:', event.error);
+                };
+            }
+        }
+
+        let currentAudio = null;
+        let currentPlayingId = null;
+
+        function playAudioNote(entry, playBtn, progressBar) {
+            const iconPlay = playBtn.querySelector('.icon-play');
+            const iconPause = playBtn.querySelector('.icon-pause');
+
+            if (currentAudio) {
+                currentAudio.pause();
+                if (currentPlayingId === entry.id) {
+                    currentAudio = null;
+                    currentPlayingId = null;
+                    iconPlay.classList.remove('hidden');
+                    iconPause.classList.add('hidden');
+                    if (progressBar) progressBar.style.width = '0%';
+                    return;
+                }
+            }
+
+            // Reset all icons
+            document.querySelectorAll('.icon-play').forEach(i => i.classList.remove('hidden'));
+            document.querySelectorAll('.icon-pause').forEach(i => i.classList.add('hidden'));
+
+            if (!entry.audioUrl) {
+                // Synthetic speech fallback for text
+                const synth = window.speechSynthesis;
+                const utterance = new SpeechSynthesisUtterance(entry.text || '記録がありません');
+                utterance.lang = 'ja-JP';
+                synth.speak(utterance);
+                showToast('テキストを読み上げています...');
                 return;
             }
 
-            // Check if entry already exists
-            const existingIndex = diaries.findIndex(d => d.date === dateString);
-            
-            if (existingIndex >= 0) {
-                // Update
-                diaries[existingIndex].text = text;
-                diaries[existingIndex].timestamp = Date.now();
-                showToast('更新しました');
-            } else {
-                // Create new
-                diaries.push({
-                    id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
-                    date: dateString,
-                    text: text,
-                    timestamp: Date.now()
-                });
-                showToast('保存しました');
-                saveBtn.innerHTML = '<i class="fa-solid fa-check"></i> 更新';
+            currentAudio = new Audio(entry.audioUrl);
+            currentPlayingId = entry.id;
+
+            iconPlay.classList.add('hidden');
+            iconPause.classList.remove('hidden');
+
+            currentAudio.play();
+
+            currentAudio.ontimeupdate = () => {
+                if (currentAudio && progressBar && currentAudio.duration) {
+                    const pct = (currentAudio.currentTime / currentAudio.duration) * 100;
+                    progressBar.style.width = `${pct}%`;
+                }
+            };
+
+            currentAudio.onended = () => {
+                if (progressBar) progressBar.style.width = '0%';
+                iconPlay.classList.remove('hidden');
+                iconPause.classList.add('hidden');
+                currentAudio = null;
+                currentPlayingId = null;
+            };
+        }
+
+        function saveCurrentEntry() {
+            const title = elements.diaryTitleInput.value.trim();
+            const text = elements.diaryTextInput.value.trim();
+            if (!title && !text && !state.recordedAudioUrl) {
+                showToast('概要または詳細を入力してください。');
+                return;
             }
 
-            // Save to localStorage
-            localStorage.setItem('voiceDiaryApp_data', JSON.stringify(diaries));
+            const currentYear = new Date().getFullYear();
+            const month = state.currentDate.getMonth();
+            const day = state.currentDate.getDate();
+
+            const newEntry = {
+                id: 'entry-' + Date.now(),
+                year: currentYear,
+                month: month,
+                day: day,
+                timestamp: Date.now(),
+                title: title || '',
+                text: text || '',
+                audioUrl: state.recordedAudioUrl,
+                duration: state.recordingSeconds || 0
+            };
+
+            // Replace existing entry for the current year on this date, if any exists
+            state.entries = state.entries.filter(e => !(e.year === currentYear && e.month === month && e.day === day));
             
-            // Re-render just in case it affects lists
-            loadDataForDate();
+            // Add new entry
+            state.entries.push(newEntry);
+            saveEntries();
+
+            // Reset Recorder form
+            elements.diaryTitleInput.value = '';
+            elements.diaryTextInput.value = '';
+            state.recordedAudioUrl = null;
+            state.recordingSeconds = 0;
+            elements.timerDisplay.textContent = '00:00';
+            elements.recorderCard.classList.add('hidden');
+            elements.recordingStatus.textContent = 'マイクボタンを押して録音を開始（音声自動文字起こし対応）';
+
+            // Refresh UI dynamically
+            renderCalendar();
+            renderTimeline();
+
+            showToast(`${currentYear}年${month + 1}月${day}日の記録を保存しました。`);
         }
 
         function deleteEntry(id) {
-            if(confirm("この記録を削除してもよろしいですか？")) {
-                diaries = diaries.filter(d => d.id !== id);
-                localStorage.setItem('voiceDiaryApp_data', JSON.stringify(diaries));
-                showToast('削除しました');
-                loadDataForDate();
-            }
+            state.entries = state.entries.filter(e => e.id !== id);
+            saveEntries();
+            renderCalendar();
+            renderTimeline();
+            showToast('記録を削除しました。');
         }
 
-        function renderPastEntries(entries) {
-            entriesList.innerHTML = '';
+        function showDeleteModal(id) {
+            state.entryToDeleteId = id;
+            elements.deleteModal.classList.remove('hidden');
             
-            if (entries.length === 0) {
-                entriesList.appendChild(emptyState);
-                emptyState.style.display = 'block';
-                return;
-            }
-            
-            emptyState.style.display = 'none';
-
-            entries.forEach(entry => {
-                const entryDate = new Date(entry.date);
-                const year = entryDate.getFullYear();
-                
-                // Calculate years ago based on CURRENTLY SELECTED year
-                const yearsAgo = currentDate.getFullYear() - year;
-                
-                const card = document.createElement('div');
-                card.className = 'bg-white rounded-xl shadow-sm border border-gray-100 p-4 entry-card relative overflow-hidden';
-                
-                // Add a left border color based on how many years ago (just for visual flair)
-                const colors = ['bg-blue-400', 'bg-green-400', 'bg-yellow-400', 'bg-purple-400', 'bg-pink-400', 'bg-indigo-400'];
-                const stripeColor = colors[(yearsAgo - 1) % colors.length] || 'bg-gray-400';
-                
-                // Format text with line breaks
-                const formattedText = entry.text.replace(/\n/g, '<br>');
-
-                card.innerHTML = `
-                    <div class="absolute left-0 top-0 bottom-0 w-1 ${stripeColor}"></div>
-                    <div class="flex justify-between items-start mb-2 pl-2">
-                        <div class="flex items-center gap-2">
-                            <span class="font-bold text-gray-800 text-lg">${year}年</span>
-                            <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">${yearsAgo}年前</span>
-                        </div>
-                        <button class="delete-btn text-gray-400 hover:text-red-500 transition p-1" data-id="${entry.id}" title="削除">
-                            <i class="fa-regular fa-trash-can"></i>
-                        </button>
-                    </div>
-                    <div class="text-gray-700 text-sm leading-relaxed pl-2 whitespace-pre-wrap">${formattedText}</div>
-                `;
-                
-                // Add delete listener
-                card.querySelector('.delete-btn').addEventListener('click', function(e) {
-                    e.stopPropagation(); // Prevent card click if added later
-                    deleteEntry(this.getAttribute('data-id'));
+            // Allow display:block to apply before adding opacity
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    elements.deleteModal.classList.remove('opacity-0');
+                    elements.deleteModalContent.classList.remove('scale-95');
+                    elements.deleteModalContent.classList.add('scale-100');
                 });
-
-                entriesList.appendChild(card);
             });
         }
 
-        function showToast(message) {
-            toast.textContent = message;
-            toast.classList.remove('opacity-0');
+        function hideDeleteModal() {
+            state.entryToDeleteId = null;
+            elements.deleteModal.classList.add('opacity-0');
+            elements.deleteModalContent.classList.remove('scale-100');
+            elements.deleteModalContent.classList.add('scale-95');
             
             setTimeout(() => {
-                toast.classList.add('opacity-0');
+                elements.deleteModal.classList.add('hidden');
+            }, 200); // Matches Tailwind transition duration
+        }
+
+        function setupEventListeners() {
+            // Calendar Month Navigation
+            elements.calPrev.addEventListener('click', () => {
+                state.currentDate.setMonth(state.currentDate.getMonth() - 1);
+                renderCalendar();
+                renderTimeline();
+            });
+
+            elements.calNext.addEventListener('click', () => {
+                state.currentDate.setMonth(state.currentDate.getMonth() + 1);
+                renderCalendar();
+                renderTimeline();
+            });
+
+            elements.btnToday.addEventListener('click', () => {
+                state.currentDate = new Date();
+                renderCalendar();
+                renderTimeline();
+            });
+
+            // Recorder Toggle
+            elements.btnOpenRecorder.addEventListener('click', () => {
+                elements.recorderCard.classList.remove('hidden');
+                elements.recorderCard.scrollIntoView({ behavior: 'smooth' });
+            });
+
+            elements.btnCloseRecorder.addEventListener('click', () => {
+                if (state.recording) stopRecording();
+                elements.recorderCard.classList.add('hidden');
+            });
+
+            // Record Button
+            elements.btnRecordToggle.addEventListener('click', () => {
+                if (!state.recording) {
+                    startRecording();
+                } else {
+                    stopRecording();
+                }
+            });
+
+            // Save Entry
+            elements.btnSaveEntry.addEventListener('click', saveCurrentEntry);
+
+            // Delete Modal
+            elements.btnCancelDelete.addEventListener('click', hideDeleteModal);
+            elements.btnConfirmDelete.addEventListener('click', () => {
+                if (state.entryToDeleteId) {
+                    deleteEntry(state.entryToDeleteId);
+                    hideDeleteModal();
+                }
+            });
+        }
+
+        function showToast(msg) {
+            elements.toastMessage.textContent = msg;
+            elements.toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                elements.toast.classList.add('translate-y-20', 'opacity-0');
             }, 3000);
         }
 
-        // Event Listeners
-        micBtn.addEventListener('click', toggleRecording);
-        saveBtn.addEventListener('click', saveEntry);
-
-        prevDayBtn.addEventListener('click', () => {
-            currentDate.setDate(currentDate.getDate() - 1);
-            updateDateDisplay();
-        });
-
-        nextDayBtn.addEventListener('click', () => {
-            currentDate.setDate(currentDate.getDate() + 1);
-            updateDateDisplay();
-        });
-
-        resetTodayBtn.addEventListener('click', () => {
-            currentDate = new Date();
-            updateDateDisplay();
-        });
-
-        datePicker.addEventListener('change', (e) => {
-            if (e.target.value) {
-                currentDate = new Date(e.target.value);
-                updateDateDisplay();
-            }
-        });
-
-        // Add some dummy data if empty (for demonstration of the 異年同日 feature)
-        function initDummyData() {
-            if (diaries.length === 0) {
-                const today = new Date();
-                const currentMonth = String(today.getMonth() + 1).padStart(2, '0');
-                const currentDay = String(today.getDate()).padStart(2, '0');
-                
-                // 1 year ago
-                diaries.push({
-                    id: 'dummy1',
-                    date: `${today.getFullYear() - 1}-${currentMonth}-${currentDay}`,
-                    text: '今日は久しぶりに映画館に行った。とても面白かった。\n来年もこの時期に見に行きたい。',
-                    timestamp: Date.now() - 31536000000
-                });
-                
-                // 3 years ago
-                diaries.push({
-                    id: 'dummy2',
-                    date: `${today.getFullYear() - 3}-${currentMonth}-${currentDay}`,
-                    text: '新しいプロジェクトが始まった。不安もあるけど頑張ろう。',
-                    timestamp: Date.now() - (31536000000 * 3)
-                });
-
-                localStorage.setItem('voiceDiaryApp_data', JSON.stringify(diaries));
-            }
+        function escapeHtml(str) {
+            return str.replace(/[&<>"']/g, function(m) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#039;'
+                }[m];
+            });
         }
-
-        // Initialize App
-        initDummyData();
-        updateDateDisplay();
-        initSecurity(); // Run security check on load
-        
     </script>
 </body>
 </html>
