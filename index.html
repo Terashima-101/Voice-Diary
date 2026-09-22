@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- PWA / Home Screen App configuration -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="ボイス手帳">
+    <title>ボイス手帳 - 異年同日ダイアリー</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            background-color: #f3f4f6;
+        }
+        
+        @keyframes pulse-ring {
+            0% {
+                transform: scale(0.8);
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            }
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 15px rgba(239, 68, 68, 0);
+            }
+            100% {
+                transform: scale(0.8);
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+            }
+        }
+        
+        .recording-active {
+            animation: pulse-ring 2s infinite;
+            background-color: #ef4444 !important;
+            color: white !important;
+        }
+
+        .entry-card {
+            transition: all 0.2s ease-in-out;
+        }
+        .entry-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Hide scrollbar for clean UI but keep functionality */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="text-gray-800 h-screen flex flex-col overflow-hidden">
+
+    <!-- App Header -->
+    <header class="bg-indigo-600 text-white shadow-md z-10">
+        <div class="max-w-3xl mx-auto px-4 py-3 flex justify-between items-center">
+            <h1 class="text-xl font-bold tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-microphone-lines"></i>
+                ボイス手帳
+            </h1>
+            <div class="flex items-center gap-2">
+                <button id="backup-btn" class="text-xs bg-indigo-500 hover:bg-indigo-400 px-2.5 py-1 rounded font-medium transition flex items-center gap-1" title="データを保存/復元">
+                    <i class="fa-solid fa-download"></i> バックアップ
+                </button>
+                <button id="lock-btn" class="text-xs bg-indigo-700 hover:bg-indigo-800 px-2.5 py-1 rounded font-medium transition flex items-center gap-1" title="手帳をロック">
+                    <i class="fa-solid fa-lock"></i> ロック
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Passcode Lock Modal -->
+    <div id="passcode-modal" class="fixed inset-0 bg-gray-900/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl p-6 max-w-xs w-full shadow-2xl text-center">
+            <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <h2 id="passcode-title" class="text-lg font-bold text-gray-800 mb-1">パスコードを入力</h2>
+            <p id="passcode-sub" class="text-xs text-gray-500 mb-4">4桁の暗証番号を入力してください</p>
+            
+            <input type="password" id="passcode-input" maxlength="4" pattern="[0-9]*" inputmode="numeric" class="w-32 text-center text-2xl tracking-widest py-2 border-2 border-indigo-200 rounded-lg focus:border-indigo-600 focus:outline-none mb-4 font-mono">
+            
+            <button id="passcode-submit" class="w-full bg-indigo-600 text-white py-2 rounded-lg font-medium hover:bg-indigo-700 transition">
+                解除
+            </button>
+        </div>
+    </div>
+
+    <!-- Backup / Import Modal -->
+    <div id="backup-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <h3 class="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2">
+                <i class="fa-solid fa-database text-indigo-600"></i>
+                データ管理
+            </h3>
+            <p class="text-xs text-gray-500 mb-4">手帳データはご使用の端末内にのみ安全に保存されています。</p>
+            
+            <div class="space-y-3">
+                <button id="export-json-btn" class="w-full bg-indigo-50 border border-indigo-200 text-indigo-700 py-2.5 rounded-xl font-medium hover:bg-indigo-100 transition flex items-center justify-center gap-2 text-sm">
+                    <i class="fa-solid fa-file-export"></i> データをファイルに書き出す
+                </button>
+                <div>
+                    <label class="w-full bg-gray-50 border border-gray-200 text-gray-700 py-2.5 rounded-xl font-medium hover:bg-gray-100 transition flex items-center justify-center gap-2 text-sm cursor-pointer">
+                        <i class="fa-solid fa-file-import"></i> データを読み込む
+                        <input type="file" id="import-json-file" accept=".json" class="hidden">
+                    </label>
+                </div>
+            </div>
+            
+            <button id="close-backup-modal" class="w-full mt-4 bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-300 transition">
+                閉じる
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto hide-scrollbar bg-gray-50 max-w-3xl w-full mx-auto shadow-xl relative" id="main-container">
+        
+        <!-- Date Navigator -->
+        <div class="bg-white px-4 py-3 border-b sticky top-0 z-10 flex justify-between items-center shadow-sm">
+            <button id="prev-day-btn" class="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <div class="text-center flex flex-col cursor-pointer" id="date-selector-container">
+                <span id="display-year" class="text-xs text-gray-500 font-medium"></span>
+                <span id="display-date" class="text-lg font-bold text-gray-800"></span>
+                <!-- Hidden native date picker to overlay for easy selection -->
+                <input type="date" id="date-picker" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
+            </div>
+            <button id="next-day-btn" class="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+        </div>
+
+        <!-- Today's Entry / Input Section -->
+        <div class="p-4">
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+                <div class="bg-indigo-50/50 px-4 py-3 border-b border-gray-100 flex justify-between items-center">
+                    <span class="text-sm font-semibold text-indigo-800" id="current-year-badge">この日の記録</span>
+                    <button id="reset-today-btn" class="text-xs text-indigo-600 hover:underline hidden">今日に戻る</button>
+                </div>
+                
+                <div class="p-4">
+                    <div class="relative">
+                        <textarea id="diary-text" rows="4" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition resize-none text-gray-700 leading-relaxed" placeholder="マイクボタンを押して話すか、ここに入力してください..."></textarea>
+                        
+                        <!-- Status indicator for Speech API -->
+                        <div id="speech-status" class="absolute bottom-3 right-3 text-xs text-gray-400 hidden">
+                            <span class="animate-pulse">音声を認識中...</span>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center mt-4">
+                        <div class="flex items-center gap-2">
+                            <!-- Mic Button -->
+                            <button id="mic-btn" class="w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 flex justify-center items-center hover:bg-indigo-200 transition shadow-sm" title="音声入力">
+                                <i class="fa-solid fa-microphone text-xl"></i>
+                            </button>
+                            <span id="mic-hint" class="text-xs text-gray-500">音声で入力</span>
+                        </div>
+                        
+                        <button id="save-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-6 rounded-lg shadow transition flex items-center gap-2">
+                            <i class="fa-solid fa-check"></i>
+                            保存
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Same-Day Past Years List (異年同日) -->
+            <div id="past-entries-section">
+                <div class="flex items-center gap-2 mb-4 px-2">
+                    <i class="fa-solid fa-clock-rotate-left text-gray-400"></i>
+                    <h2 class="text-sm font-bold text-gray-600">過去の同じ日 (異年同日)</h2>
+                </div>
+                
+                <div id="entries-list" class="space-y-4">
+                    <!-- Past entries will be injected here via JS -->
+                    <div class="text-center py-8 text-gray-400 text-sm" id="empty-state">
+                        <i class="fa-regular fa-folder-open text-3xl mb-2 opacity-50 block"></i>
+                        過去の同じ日の記録はありません。
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium transition-opacity duration-300 opacity-0 pointer-events-none z-50">
+        Message
+    </div>
+
+    <script>
+        // Application State
+        let currentDate = new Date();
+        let diaries = JSON.parse(localStorage.getItem('voiceDiaryApp_data')) || [];
+        let savedPIN = localStorage.getItem('voiceDiaryApp_pin') || null;
+        
+        // Passcode Lock Logic
+        const passcodeModal = document.getElementById('passcode-modal');
+        const passcodeTitle = document.getElementById('passcode-title');
+        const passcodeSub = document.getElementById('passcode-sub');
+        const passcodeInput = document.getElementById('passcode-input');
+        const passcodeSubmit = document.getElementById('passcode-submit');
+        const lockBtn = document.getElementById('lock-btn');
+
+        function initSecurity() {
+            if (!savedPIN) {
+                passcodeTitle.textContent = "初期パスコード設定";
+                passcodeSub.textContent = "保護用の4桁の番号を決めて入力してください";
+                passcodeSubmit.textContent = "設定して開始";
+            } else {
+                passcodeTitle.textContent = "パスコードを入力";
+                passcodeSub.textContent = "4桁の暗証番号を入力してください";
+                passcodeSubmit.textContent = "解除";
+            }
+            passcodeModal.classList.remove('hidden');
+            passcodeInput.value = '';
+            passcodeInput.focus();
+        }
+
+        passcodeSubmit.addEventListener('click', verifyPasscode);
+        passcodeInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') verifyPasscode();
+        });
+
+        function verifyPasscode() {
+            const val = passcodeInput.value.trim();
+            if (val.length !== 4 || isNaN(val)) {
+                showToast('4桁の数字を入力してください');
+                return;
+            }
+
+            if (!savedPIN) {
+                savedPIN = val;
+                localStorage.setItem('voiceDiaryApp_pin', savedPIN);
+                showToast('パスコードを設定しました');
+                passcodeModal.classList.add('hidden');
+            } else if (val === savedPIN) {
+                passcodeModal.classList.add('hidden');
+                showToast('ロックを解除しました');
+            } else {
+                showToast('パスコードが違います');
+                passcodeInput.value = '';
+            }
+        }
+
+        lockBtn.addEventListener('click', () => {
+            initSecurity();
+        });
+
+        // Backup / Restore Logic
+        const backupBtn = document.getElementById('backup-btn');
+        const backupModal = document.getElementById('backup-modal');
+        const closeBackupModal = document.getElementById('close-backup-modal');
+        const exportJsonBtn = document.getElementById('export-json-btn');
+        const importJsonFile = document.getElementById('import-json-file');
+
+        backupBtn.addEventListener('click', () => backupModal.classList.remove('hidden'));
+        closeBackupModal.addEventListener('click', () => backupModal.classList.add('hidden'));
+
+        exportJsonBtn.addEventListener('click', () => {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(diaries, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `voice_diary_backup_${formatDateString(new Date())}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+            showToast('バックアップを出力しました');
+        });
+
+        importJsonFile.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const imported = JSON.parse(evt.target.result);
+                    if (Array.isArray(imported)) {
+                        diaries = imported;
+                        localStorage.setItem('voiceDiaryApp_data', JSON.stringify(diaries));
+                        showToast('データを復元しました');
+                        loadDataForDate();
+                        backupModal.classList.add('hidden');
+                    } else {
+                        showToast('無効なデータ形式です');
+                    }
+                } catch(err) {
+                    showToast('ファイルの読み込みに失敗しました');
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // DOM Elements
+        const displayYear = document.getElementById('display-year');
+        const displayDate = document.getElementById('display-date');
+        const datePicker = document.getElementById('date-picker');
+        const prevDayBtn = document.getElementById('prev-day-btn');
+        const nextDayBtn = document.getElementById('next-day-btn');
+        const resetTodayBtn = document.getElementById('reset-today-btn');
+        
+        const diaryText = document.getElementById('diary-text');
+        const micBtn = document.getElementById('mic-btn');
+        const micHint = document.getElementById('mic-hint');
+        const saveBtn = document.getElementById('save-btn');
+        const speechStatus = document.getElementById('speech-status');
+        const currentYearBadge = document.getElementById('current-year-badge');
+        
+        const entriesList = document.getElementById('entries-list');
+        const emptyState = document.getElementById('empty-state');
+        const toast = document.getElementById('toast');
+
+        // Speech Recognition Setup (Web Speech API)
+        let recognition = null;
+        let isRecording = false;
+
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.lang = 'ja-JP';
+            recognition.continuous = true; // Keep recording until stopped
+            recognition.interimResults = true; // Show results while speaking
+
+            recognition.onstart = function() {
+                isRecording = true;
+                micBtn.classList.add('recording-active');
+                micBtn.innerHTML = '<i class="fa-solid fa-stop text-xl"></i>';
+                micHint.textContent = '録音中...';
+                micHint.classList.add('text-red-500');
+                speechStatus.classList.remove('hidden');
+                
+                // Add space if there's already text
+                if (diaryText.value.length > 0 && !diaryText.value.endsWith('\n') && !diaryText.value.endsWith(' ')) {
+                    diaryText.value += '\n';
+                }
+            };
+
+            let finalTranscript = '';
+
+            recognition.onresult = function(event) {
+                let interimTranscript = '';
+                
+                // Re-calculate final text up to this point from previous sessions is already in textarea.
+                // We only append new results.
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        // Append final results to the textarea directly
+                        const text = event.results[i][0].transcript;
+                        diaryText.value += text + '。'; // Add period for Japanese
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+                
+                // Scroll to bottom as text is added
+                diaryText.scrollTop = diaryText.scrollHeight;
+            };
+
+            recognition.onerror = function(event) {
+                console.error("Speech recognition error", event.error);
+                stopRecording();
+                if(event.error !== 'no-speech') {
+                    showToast('音声認識エラー: ' + event.error);
+                }
+            };
+
+            recognition.onend = function() {
+                if (isRecording) {
+                    // Automatically restart if continuous gets dropped, unless manually stopped
+                    recognition.start();
+                } else {
+                    stopRecordingUI();
+                }
+            };
+        } else {
+            // Speech API not supported
+            micBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            micBtn.title = 'お使いのブラウザは音声入力に対応していません';
+            micHint.textContent = '音声入力非対応';
+        }
+
+        function toggleRecording() {
+            if (!recognition) {
+                showToast('お使いのブラウザは音声入力に対応していません。(Chrome/Safari推奨)');
+                return;
+            }
+
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        }
+
+        function startRecording() {
+            try {
+                recognition.start();
+            } catch (e) {
+                console.error("Could not start recording", e);
+            }
+        }
+
+        function stopRecording() {
+            isRecording = false;
+            try {
+                recognition.stop();
+            } catch(e) {}
+            stopRecordingUI();
+        }
+
+        function stopRecordingUI() {
+            micBtn.classList.remove('recording-active');
+            micBtn.innerHTML = '<i class="fa-solid fa-microphone text-xl"></i>';
+            micHint.textContent = '音声で入力';
+            micHint.classList.remove('text-red-500');
+            speechStatus.classList.add('hidden');
+        }
+
+        // --- Date Management ---
+        function formatDateString(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        const days = ['日', '月', '火', '水', '木', '金', '土'];
+        
+        function updateDateDisplay() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth() + 1;
+            const date = currentDate.getDate();
+            const dayStr = days[currentDate.getDay()];
+
+            displayYear.textContent = `${year}年`;
+            displayDate.textContent = `${month}月${date}日 (${dayStr})`;
+            
+            // Sync hidden date picker
+            datePicker.value = formatDateString(currentDate);
+
+            // Check if current date is today
+            const today = new Date();
+            if (year === today.getFullYear() && month === today.getMonth() + 1 && date === today.getDate()) {
+                resetTodayBtn.classList.add('hidden');
+            } else {
+                resetTodayBtn.classList.remove('hidden');
+            }
+            
+            currentYearBadge.textContent = `${year}年の記録`;
+
+            // Load data for the selected date
+            loadDataForDate();
+        }
+
+        function loadDataForDate() {
+            const targetMonth = currentDate.getMonth();
+            const targetDate = currentDate.getDate();
+            const targetYear = currentDate.getFullYear();
+            
+            const dateString = formatDateString(currentDate);
+
+            // Find entry for currently selected YEAR
+            const currentYearEntry = diaries.find(d => d.date === dateString);
+            
+            if (currentYearEntry) {
+                diaryText.value = currentYearEntry.text;
+                saveBtn.innerHTML = '<i class="fa-solid fa-check"></i> 更新';
+            } else {
+                diaryText.value = '';
+                saveBtn.innerHTML = '<i class="fa-solid fa-check"></i> 保存';
+            }
+
+            // Find entries for SAME MONTH/DAY but DIFFERENT YEARS (異年同日)
+            const pastEntries = diaries.filter(d => {
+                const dObj = new Date(d.date);
+                // Same month and day, but year is LESS than currently selected year
+                return dObj.getMonth() === targetMonth && 
+                       dObj.getDate() === targetDate && 
+                       dObj.getFullYear() < targetYear;
+            }).sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort descending by year (newest first)
+
+            renderPastEntries(pastEntries);
+        }
+
+        function saveEntry() {
+            const text = diaryText.value.trim();
+            const dateString = formatDateString(currentDate);
+
+            if (!text) {
+                showToast('テキストを入力してください');
+                return;
+            }
+
+            // Check if entry already exists
+            const existingIndex = diaries.findIndex(d => d.date === dateString);
+            
+            if (existingIndex >= 0) {
+                // Update
+                diaries[existingIndex].text = text;
+                diaries[existingIndex].timestamp = Date.now();
+                showToast('更新しました');
+            } else {
+                // Create new
+                diaries.push({
+                    id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
+                    date: dateString,
+                    text: text,
+                    timestamp: Date.now()
+                });
+                showToast('保存しました');
+                saveBtn.innerHTML = '<i class="fa-solid fa-check"></i> 更新';
+            }
+
+            // Save to localStorage
+            localStorage.setItem('voiceDiaryApp_data', JSON.stringify(diaries));
+            
+            // Re-render just in case it affects lists
+            loadDataForDate();
+        }
+
+        function deleteEntry(id) {
+            if(confirm("この記録を削除してもよろしいですか？")) {
+                diaries = diaries.filter(d => d.id !== id);
+                localStorage.setItem('voiceDiaryApp_data', JSON.stringify(diaries));
+                showToast('削除しました');
+                loadDataForDate();
+            }
+        }
+
+        function renderPastEntries(entries) {
+            entriesList.innerHTML = '';
+            
+            if (entries.length === 0) {
+                entriesList.appendChild(emptyState);
+                emptyState.style.display = 'block';
+                return;
+            }
+            
+            emptyState.style.display = 'none';
+
+            entries.forEach(entry => {
+                const entryDate = new Date(entry.date);
+                const year = entryDate.getFullYear();
+                
+                // Calculate years ago based on CURRENTLY SELECTED year
+                const yearsAgo = currentDate.getFullYear() - year;
+                
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-xl shadow-sm border border-gray-100 p-4 entry-card relative overflow-hidden';
+                
+                // Add a left border color based on how many years ago (just for visual flair)
+                const colors = ['bg-blue-400', 'bg-green-400', 'bg-yellow-400', 'bg-purple-400', 'bg-pink-400', 'bg-indigo-400'];
+                const stripeColor = colors[(yearsAgo - 1) % colors.length] || 'bg-gray-400';
+                
+                // Format text with line breaks
+                const formattedText = entry.text.replace(/\n/g, '<br>');
+
+                card.innerHTML = `
+                    <div class="absolute left-0 top-0 bottom-0 w-1 ${stripeColor}"></div>
+                    <div class="flex justify-between items-start mb-2 pl-2">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-gray-800 text-lg">${year}年</span>
+                            <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">${yearsAgo}年前</span>
+                        </div>
+                        <button class="delete-btn text-gray-400 hover:text-red-500 transition p-1" data-id="${entry.id}" title="削除">
+                            <i class="fa-regular fa-trash-can"></i>
+                        </button>
+                    </div>
+                    <div class="text-gray-700 text-sm leading-relaxed pl-2 whitespace-pre-wrap">${formattedText}</div>
+                `;
+                
+                // Add delete listener
+                card.querySelector('.delete-btn').addEventListener('click', function(e) {
+                    e.stopPropagation(); // Prevent card click if added later
+                    deleteEntry(this.getAttribute('data-id'));
+                });
+
+                entriesList.appendChild(card);
+            });
+        }
+
+        function showToast(message) {
+            toast.textContent = message;
+            toast.classList.remove('opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+            }, 3000);
+        }
+
+        // Event Listeners
+        micBtn.addEventListener('click', toggleRecording);
+        saveBtn.addEventListener('click', saveEntry);
+
+        prevDayBtn.addEventListener('click', () => {
+            currentDate.setDate(currentDate.getDate() - 1);
+            updateDateDisplay();
+        });
+
+        nextDayBtn.addEventListener('click', () => {
+            currentDate.setDate(currentDate.getDate() + 1);
+            updateDateDisplay();
+        });
+
+        resetTodayBtn.addEventListener('click', () => {
+            currentDate = new Date();
+            updateDateDisplay();
+        });
+
+        datePicker.addEventListener('change', (e) => {
+            if (e.target.value) {
+                currentDate = new Date(e.target.value);
+                updateDateDisplay();
+            }
+        });
+
+        // Add some dummy data if empty (for demonstration of the 異年同日 feature)
+        function initDummyData() {
+            if (diaries.length === 0) {
+                const today = new Date();
+                const currentMonth = String(today.getMonth() + 1).padStart(2, '0');
+                const currentDay = String(today.getDate()).padStart(2, '0');
+                
+                // 1 year ago
+                diaries.push({
+                    id: 'dummy1',
+                    date: `${today.getFullYear() - 1}-${currentMonth}-${currentDay}`,
+                    text: '今日は久しぶりに映画館に行った。とても面白かった。\n来年もこの時期に見に行きたい。',
+                    timestamp: Date.now() - 31536000000
+                });
+                
+                // 3 years ago
+                diaries.push({
+                    id: 'dummy2',
+                    date: `${today.getFullYear() - 3}-${currentMonth}-${currentDay}`,
+                    text: '新しいプロジェクトが始まった。不安もあるけど頑張ろう。',
+                    timestamp: Date.now() - (31536000000 * 3)
+                });
+
+                localStorage.setItem('voiceDiaryApp_data', JSON.stringify(diaries));
+            }
+        }
+
+        // Initialize App
+        initDummyData();
+        updateDateDisplay();
+        initSecurity(); // Run security check on load
+        
+    </script>
+</body>
+</html>
