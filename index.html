@@ -15,6 +15,13 @@
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         /* オーディオビジュアライザー用キャンバス */
         #visualizer { width: 100%; height: 60px; background-color: #0f172a; border-radius: 0.375rem; }
+        /* テキスト2行制限用 */
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
     </style>
 </head>
 <body class="text-slate-800 antialiased min-h-screen flex flex-col">
@@ -25,9 +32,15 @@
                 <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
                 <h1 class="text-xl font-bold tracking-wide">指導記録アーカイブ</h1>
             </div>
-            <div class="text-sm text-slate-300 flex items-center gap-2">
-                <span>総記録数:</span>
-                <span id="total-records-count" class="font-bold text-white text-lg">0</span>
+            <div class="flex items-center gap-3">
+                <button id="btn-open-backup" class="text-xs font-bold bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded-md transition flex items-center gap-1.5 border border-slate-600">
+                    <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                    データ管理
+                </button>
+                <div class="text-sm text-slate-300 flex items-center gap-1">
+                    <span>総記録数:</span>
+                    <span id="total-records-count" class="font-bold text-white text-lg">0</span>
+                </div>
             </div>
         </div>
     </header>
@@ -144,6 +157,64 @@
         </div>
     </div>
 
+    <!-- データ管理（バックアップ・復元）モーダル -->
+    <div id="backup-modal" class="fixed inset-0 bg-slate-900/50 z-50 hidden flex items-center justify-center opacity-0 transition-opacity duration-200">
+        <div id="backup-modal-content" class="bg-white rounded-md shadow-xl max-w-lg w-full mx-4 transform scale-95 transition-transform duration-200 p-6 space-y-5">
+            <div class="flex justify-between items-center border-b border-slate-200 pb-3">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                    データのバックアップと復元
+                </h3>
+                <button id="btn-close-backup" class="text-slate-400 hover:text-slate-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <!-- エクスポート -->
+            <div class="space-y-2">
+                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider">1. バックアップを出力</h4>
+                <p class="text-xs text-slate-600 leading-relaxed">現在の全指導記録をデータファイルまたはテキストとして保存します。</p>
+                <div class="flex flex-wrap gap-2 pt-1">
+                    <button id="btn-export-file" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        ファイルで出力 (.json)
+                    </button>
+                    <button id="btn-copy-json" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-md text-xs font-bold transition flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                        テキストをコピー
+                    </button>
+                </div>
+            </div>
+
+            <hr class="border-slate-200">
+
+            <!-- インポート -->
+            <div class="space-y-3">
+                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider">2. データを復元（読み込み）</h4>
+                <p class="text-xs text-slate-600 leading-relaxed">保存したバックアップファイル、またはコピーしたテキストを貼り付けて読み込みます。</p>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 mb-1">ファイルから読み込み</label>
+                    <input type="file" id="backup-file-input" accept=".json,.txt" class="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 mb-1">または バックアップテキストを貼り付け</label>
+                    <textarea id="import-text-input" rows="3" placeholder='ここにバックアップテキストを貼り付けます' class="w-full border border-slate-300 rounded-md p-2 text-xs font-mono focus:ring-2 focus:ring-blue-500 outline-none resize-none"></textarea>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-1">
+                    <button id="btn-import-merge" class="bg-slate-700 hover:bg-slate-800 text-white px-3 py-2 rounded-md text-xs font-bold transition shadow-sm">
+                        追加・統合して復元
+                    </button>
+                    <button id="btn-import-overwrite" class="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md text-xs font-bold transition shadow-sm">
+                        全上書きで復元
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- トースト通知 -->
     <div id="toast" class="fixed bottom-4 right-4 bg-slate-800 text-white px-4 py-3 rounded-md shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 z-50 text-sm font-bold">
         メッセージ
@@ -204,6 +275,19 @@
             deleteModalContent: document.getElementById('delete-modal-content'),
             btnCancelDelete: document.getElementById('btn-cancel-delete'),
             btnConfirmDelete: document.getElementById('btn-confirm-delete'),
+            
+            // バックアップ関連 DOM
+            backupModal: document.getElementById('backup-modal'),
+            backupModalContent: document.getElementById('backup-modal-content'),
+            btnOpenBackup: document.getElementById('btn-open-backup'),
+            btnCloseBackup: document.getElementById('btn-close-backup'),
+            btnExportFile: document.getElementById('btn-export-file'),
+            btnCopyJson: document.getElementById('btn-copy-json'),
+            backupFileInput: document.getElementById('backup-file-input'),
+            importTextInput: document.getElementById('import-text-input'),
+            btnImportMerge: document.getElementById('btn-import-merge'),
+            btnImportOverwrite: document.getElementById('btn-import-overwrite'),
+
             toast: document.getElementById('toast')
         };
 
@@ -373,64 +457,118 @@
                 let yearsLabel = isCurrentYear ? "今年" : `${yearDiff}年前`;
 
                 const card = document.createElement('div');
-                card.className = 'bg-white border border-slate-200 rounded-md shadow-sm p-4 relative';
+                card.className = 'bg-white border border-slate-200 rounded-md shadow-sm overflow-hidden transition-all duration-200';
                 
                 // 左側に年のラインを引くデザイン
-                const borderAccent = isCurrentYear ? 'border-blue-500' : 'border-slate-300';
-                card.classList.add('border-l-4', borderAccent);
+                const borderAccent = isCurrentYear ? 'border-l-4 border-l-blue-600' : 'border-l-4 border-l-slate-400';
+                card.className += ' ' + borderAccent;
 
-                // タイトルのエスケープ
-                const safeTitle = escapeHtml(entry.title);
-                const safeText = escapeHtml(entry.text).replace(/\n/g, '<br>');
+                // テキストのエスケープ処理
+                const safeTitle = escapeHtml(entry.title) || 'タイトルなし';
+                const safeTextRaw = escapeHtml(entry.text || '');
+                const safeTextFormatted = safeTextRaw.replace(/\n/g, '<br>');
 
                 card.innerHTML = `
-                    <div class="flex items-start justify-between mb-3">
-                        <div>
+                    <!-- ヘッダー（折りたたみ時も常に表示される要約エリア） -->
+                    <div class="p-3.5 cursor-pointer hover:bg-slate-50/80 transition flex items-start justify-between gap-3 card-header select-none">
+                        <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-2 mb-1">
-                                <span class="text-xs font-bold ${isCurrentYear ? 'text-blue-600' : 'text-slate-500'}">
+                                <span class="text-xs font-bold px-2 py-0.5 rounded ${isCurrentYear ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-600'}">
                                     ${entry.year}年 (${yearsLabel})
                                 </span>
+                                ${entry.audioUrl ? `
+                                    <span class="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                                        音声あり
+                                    </span>
+                                ` : ''}
                             </div>
-                            <h4 class="text-base font-bold text-slate-800">${safeTitle || 'タイトルなし'}</h4>
+                            <h4 class="text-base font-bold text-slate-800 truncate">${safeTitle}</h4>
+                            ${safeTextRaw ? `<p class="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed preview-text">${safeTextRaw}</p>` : ''}
                         </div>
-                        <div class="flex gap-1">
-                            <!-- 編集ボタン -->
-                            <button class="btn-edit-entry text-slate-400 hover:text-blue-600 hover:bg-blue-50 p-1.5 rounded-md transition" data-id="${entry.id}" title="編集">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                        <div class="flex items-center gap-2 pt-1 flex-shrink-0">
+                            <svg class="chevron-icon w-5 h-5 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                    </div>
+
+                    <!-- 詳細コンテンツ（折りたたみ領域：デフォルトで非表示） -->
+                    <div class="card-detail hidden border-t border-slate-100 bg-slate-50/50 p-4 space-y-3">
+                        ${safeTextFormatted ? `
+                            <div>
+                                <span class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">指導メモ・詳細</span>
+                                <div class="text-sm text-slate-700 leading-relaxed bg-white p-3 rounded-md border border-slate-200">${safeTextFormatted}</div>
+                            </div>
+                        ` : ''}
+                        
+                        ${entry.audioUrl ? `
+                            <div>
+                                <span class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">録音データ (${formatTime(entry.duration)})</span>
+                                <div class="flex items-center gap-3 bg-white border border-slate-200 px-3 py-2 rounded-md w-max shadow-sm">
+                                    <button class="btn-play-audio w-8 h-8 flex justify-center items-center rounded-full bg-blue-600 text-white hover:bg-blue-700 transition shadow-sm">
+                                        <svg class="icon-play w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+                                        <svg class="icon-pause w-4 h-4 hidden" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                                    </button>
+                                    <div class="w-36 bg-slate-200 h-2 rounded-full overflow-hidden">
+                                        <div class="audio-progress bg-blue-600 h-full w-0 transition-all duration-100"></div>
+                                    </div>
+                                    <span class="text-xs font-mono text-slate-500">${formatTime(entry.duration)}</span>
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        <!-- アクションボタンエリア -->
+                        <div class="flex justify-end items-center gap-2 pt-2 border-t border-slate-200/60">
+                            <button class="btn-edit-entry text-xs font-bold text-slate-600 hover:text-blue-600 bg-white hover:bg-blue-50 border border-slate-200 px-3 py-1.5 rounded-md transition flex items-center gap-1 shadow-sm" data-id="${entry.id}">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                                編集する
                             </button>
-                            <!-- 削除ボタン -->
-                            <button class="btn-delete-entry text-slate-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-md transition" data-id="${entry.id}" title="削除">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            <button class="btn-delete-entry text-xs font-bold text-slate-600 hover:text-red-600 bg-white hover:bg-red-50 border border-slate-200 px-3 py-1.5 rounded-md transition flex items-center gap-1 shadow-sm" data-id="${entry.id}">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                削除する
                             </button>
                         </div>
                     </div>
-                    
-                    ${safeText ? `<div class="text-sm text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-md mb-3 border border-slate-100">${safeText}</div>` : ''}
-                    
-                    ${entry.audioUrl ? `
-                    <div class="flex items-center gap-3 bg-slate-50 border border-slate-200 px-3 py-2 rounded-md w-max">
-                        <button class="btn-play-audio w-8 h-8 flex justify-center items-center rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 transition">
-                            <svg class="icon-play w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
-                            <svg class="icon-pause w-4 h-4 hidden" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
-                        </button>
-                        <div class="w-32 bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                            <div class="audio-progress bg-blue-500 h-full w-0"></div>
-                        </div>
-                        <span class="text-xs font-mono text-slate-500">${formatTime(entry.duration)}</span>
-                    </div>` : ''}
                 `;
 
-                // イベントリスナー登録
+                // トグル（折りたたみの開閉）イベントリスナー
+                const header = card.querySelector('.card-header');
+                const detail = card.querySelector('.card-detail');
+                const chevron = card.querySelector('.chevron-icon');
+                const previewText = card.querySelector('.preview-text');
+
+                header.addEventListener('click', () => {
+                    const isHidden = detail.classList.contains('hidden');
+                    if (isHidden) {
+                        detail.classList.remove('hidden');
+                        chevron.classList.add('rotate-180');
+                        if (previewText) previewText.classList.add('hidden');
+                    } else {
+                        detail.classList.add('hidden');
+                        chevron.classList.remove('rotate-180');
+                        if (previewText) previewText.classList.remove('hidden');
+                    }
+                });
+
+                // イベントリスナー登録 (操作時にカードの開閉が連動しないよう stopPropagation)
                 const deleteBtn = card.querySelector('.btn-delete-entry');
-                deleteBtn.addEventListener('click', () => showDeleteModal(entry.id));
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    showDeleteModal(entry.id);
+                });
 
                 const editBtn = card.querySelector('.btn-edit-entry');
-                editBtn.addEventListener('click', () => openEditForm(entry));
+                editBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openEditForm(entry);
+                });
 
                 const playBtn = card.querySelector('.btn-play-audio');
                 if (playBtn) {
                     const progressBar = card.querySelector('.audio-progress');
-                    playBtn.addEventListener('click', () => playAudio(entry, playBtn, progressBar));
+                    playBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        playAudio(entry, playBtn, progressBar);
+                    });
                 }
 
                 elements.timelineContainer.appendChild(card);
@@ -559,7 +697,104 @@
             
             setTimeout(() => {
                 elements.deleteModal.classList.add('hidden');
-            }, 200); // css transition duration
+            }, 200);
+        }
+
+        // バックアップモーダルの表示・非表示
+        function showBackupModal() {
+            elements.backupModal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                elements.backupModal.classList.remove('opacity-0');
+                elements.backupModalContent.classList.remove('scale-95');
+                elements.backupModalContent.classList.add('scale-100');
+            });
+        }
+
+        function hideBackupModal() {
+            elements.backupModal.classList.add('opacity-0');
+            elements.backupModalContent.classList.remove('scale-100');
+            elements.backupModalContent.classList.add('scale-95');
+            
+            setTimeout(() => {
+                elements.backupModal.classList.add('hidden');
+                elements.importTextInput.value = '';
+                elements.backupFileInput.value = '';
+            }, 200);
+        }
+
+        // バックアップ書き出し（ファイル保存）
+        function exportBackupFile() {
+            const jsonStr = JSON.stringify(state.entries, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const todayStr = new Date().toISOString().slice(0,10).replace(/-/g, '');
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `指導記録バックアップ_${todayStr}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast('バックアップファイルを保存しました');
+        }
+
+        // バックアップ書き出し（クリップボードコピー）
+        function copyBackupText() {
+            const jsonStr = JSON.stringify(state.entries, null, 2);
+            const dummy = document.createElement('textarea');
+            document.body.appendChild(dummy);
+            dummy.value = jsonStr;
+            dummy.select();
+            document.execCommand('copy');
+            document.body.removeChild(dummy);
+            
+            showToast('バックアップテキストをコピーしました');
+        }
+
+        // データインポート実行
+        function processImport(isOverwrite) {
+            const file = elements.backupFileInput.files[0];
+            const text = elements.importTextInput.value.trim();
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    executeImportData(e.target.result, isOverwrite);
+                };
+                reader.readAsText(file);
+            } else if (text) {
+                executeImportData(text, isOverwrite);
+            } else {
+                showToast('復元するファイルまたはテキストを指定してください');
+            }
+        }
+
+        function executeImportData(jsonString, isOverwrite) {
+            try {
+                const parsed = JSON.parse(jsonString);
+                if (!Array.isArray(parsed)) {
+                    throw new Error('形式が正しくありません');
+                }
+
+                if (isOverwrite) {
+                    state.entries = parsed;
+                } else {
+                    const existingIds = new Set(state.entries.map(e => e.id));
+                    const newItems = parsed.filter(e => !existingIds.has(e.id));
+                    state.entries = [...state.entries, ...newItems];
+                }
+
+                saveEntries();
+                renderCalendar();
+                renderTimeline();
+                hideBackupModal();
+                showToast(`データを復元しました（全${state.entries.length}件）`);
+            } catch (err) {
+                console.error(err);
+                showToast('データの読み込みに失敗しました。正しいバックアップデータか確認してください。');
+            }
         }
 
         function executeDelete() {
@@ -775,6 +1010,14 @@
             // 削除モーダル
             elements.btnCancelDelete.addEventListener('click', hideDeleteModal);
             elements.btnConfirmDelete.addEventListener('click', executeDelete);
+
+            // バックアップモーダル
+            elements.btnOpenBackup.addEventListener('click', showBackupModal);
+            elements.btnCloseBackup.addEventListener('click', hideBackupModal);
+            elements.btnExportFile.addEventListener('click', exportBackupFile);
+            elements.btnCopyJson.addEventListener('click', copyBackupText);
+            elements.btnImportMerge.addEventListener('click', () => processImport(false));
+            elements.btnImportOverwrite.addEventListener('click', () => processImport(true));
         }
 
         function formatTime(seconds) {
